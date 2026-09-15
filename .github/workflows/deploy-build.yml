@@ -1,0 +1,66 @@
+name: Deploy Body Counter Flow Build
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "*.zip"
+      - "builds/*.zip"
+      - ".github/workflows/deploy-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find newest build
+        id: build
+        shell: bash
+        run: |
+          ZIP="$(find . -maxdepth 2 -type f -name '*.zip' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          if [ -z "$ZIP" ]; then
+            echo "No build ZIP found."
+            exit 1
+          fi
+          echo "Using $ZIP"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Extract build
+        shell: bash
+        run: |
+          mkdir -p /tmp/body-counter-flow
+          unzip -q "${{ steps.build.outputs.zip }}" -d /tmp/body-counter-flow
+
+          if [ ! -f /tmp/body-counter-flow/index.html ]; then
+            echo "index.html not found at ZIP root."
+            exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/body-counter-flow
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
