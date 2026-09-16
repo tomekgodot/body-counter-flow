@@ -30,15 +30,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find newest build
+      - name: Find highest version build
         id: build
         shell: bash
         run: |
-          ZIP="$(find . -maxdepth 2 -type f -name '*.zip' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          ZIP="$(find . -maxdepth 2 -type f -name 'body-counter-flow-*.zip' \
+            | sort -V \
+            | tail -1)"
+
           if [ -z "$ZIP" ]; then
-            echo "No build ZIP found."
+            echo "No Body Counter Flow build ZIP found."
             exit 1
           fi
+
           echo "Using $ZIP"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
